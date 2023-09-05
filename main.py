@@ -1,11 +1,12 @@
 import requests
 import logging
+import time
 from time import sleep
 from requests.auth import HTTPBasicAuth
 from onos import Link
 
-from rdflib import Namespace, Graph, Literal
-from rdflib.namespace import RDF, FOAF
+from rdflib import Namespace, XSD, Graph, Literal
+from rdflib.namespace import RDF
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from rdflib.graph import DATASET_DEFAULT_GRAPH_ID as default
 
@@ -15,24 +16,20 @@ ONOS_USER = "onos"
 ONOS_PASS = "rocks"
 ONOS_LINK_URL = f"{ONOS_URL}/onos/v1/links"
 ONOS_STAT_URL = f"{ONOS_URL}/onos/v1/statistics/flows/link"
+ONOS_PORT_STAT_URL = f"{ONOS_URL}/onos/v1/statistics/ports"
 READ_INTERVAL = 5
 FUSEKI_URL = "http://localhost:3030"
 FUSEKI_DATASET = "ONOS"
 FUSEKI_UPDATE_URL = f"{FUSEKI_URL}/{FUSEKI_DATASET}/update"
 FUSEKI_QUERY_URL = f"{FUSEKI_URL}/{FUSEKI_DATASET}/query"
 
-# def print_link_stats(link_id, throughput):
-#     print(f"Link ID: {link_id}")
-#     print(f"Link bandwidth: {throughput} bps")
-#     print("-" * 40)
 
-## Program logic
-'''
+def is_duplicated(list, new_link:Link) -> bool:
+    """
     This function checks for duplicated links or
     when the same link is reported in the opposite
     direction by ONOS REST API.
-'''
-def is_duplicated(list, new_link:Link) -> bool:
+    """
     for link in list:
         if (link.src_port == new_link.src_port and 
             link.src_device == new_link.src_device and
@@ -45,10 +42,11 @@ def is_duplicated(list, new_link:Link) -> bool:
             return True
     return False
 
-'''
-    Get all links from ONOS REST API
-'''
+
 def get_links():
+    """
+    Get all links from ONOS REST API
+    """
     return_value = []
     response = requests.get(ONOS_LINK_URL, auth=HTTPBasicAuth(ONOS_USER, ONOS_PASS))
     if response.status_code == 200:
@@ -60,51 +58,77 @@ def get_links():
                 id  = id + 1
     else:
         logging.error("Error getting list of links: %s", response.text)
+    logging.debug("Collected %s links from the topology", len(return_value))
     return return_value
 
-'''
-    This function gets the rate of each link
-'''
+
 def get_link_stats(l: Link) -> int:
-    return_value = 0
-    payload = {'device': l.src_device, 'port': l.src_port}
-    response = requests.get(ONOS_STAT_URL, auth=HTTPBasicAuth(ONOS_USER, ONOS_PASS), params=payload)
+    """ 
+    This function gets the delta of bytesSent and bytesReceived as well as 
+    the time passed since last readings. Based in that we can calculate
+    the link rate in that moment.
+    """
+
+    url = f"{ONOS_PORT_STAT_URL}/{l.src_device}/{l.src_port}"
+    response = requests.get(url, auth=HTTPBasicAuth(ONOS_USER, ONOS_PASS))
     if response.status_code == 200:
-        return response.json()['loads'][0]['rate']
+        bytesSent = int(response.json()['statistics'][0]['ports'][0]['bytesSent'])
+        bytesReceived = int(response.json()['statistics'][0]['ports'][0]['bytesReceived'])
+        duration = int(response.json()['statistics'][0]['ports'][0]['durationSec'])
+        l.set_data_rate(bytesSent, bytesReceived, duration)
+        logging.debug("Link (%s, %s): Bytes sent %s, Bytes received: %s, Duration: %s, Datarate: %s", l.src_device, l.dst_device, bytesSent, bytesReceived, duration, l.rate)
     else:
         logging.error("Error getting link statistics: %s", response.text)
-    pass
 
-'''
-    Publish data to SPARQL / FUSEKI
-'''
-def publish_rdf():
-    store = SPARQLUpdateStore()
-    update_endpoint = FUSEKI_UPDATE_URL
-    store.open((FUSEKI_QUERY_URL, FUSEKI_UPDATE_URL))
-    graph = Graph(store, identifier=default)
-    ex = Namespace("http://example.org")
-    node = (ex.measurement, RDF.type, ex.Measurement)
-    node2 = (ex.a, RDF.type, ex.Link)
-    node3 = (ex.a, ex.hasDataRate, Literal(5000000))
-    graph.add(node)
-    graph.add(node2)
-    graph.add(node3)
 
-'''
-    Main program function
-'''
+def publish_rdf(timeStamp: int, link: Link, graph: Graph):
+    """
+    Publishes the link statistics (data rate) to Apache Jena/Fuseki
+    SPARQL database.
+    """
+
+    logging.debug("Sending information to SPARQL: Link (%s, %s): %s bps", link.src_device, link.dst_device, link.get_data_rate())
+    ex = Namespace("http://6g-ric.de#")
+    # Link
+    graph.add((ex.a, RDF.type, ex.Link))
+    graph.add((ex.a, ex.hasOrigin, Literal(link.src_device)))
+    graph.add((ex.a, ex.hasDestination, Literal(link.dst_device)))
+    graph.add((ex.a, ex.hasDataRate, Literal(link.get_data_rate(), datatype=XSD.integer)))
+    # Timestamp
+    graph.add((ex.t, RDF.type, ex.Timestamp))
+    graph.add((ex.t, ex.hasTime, Literal(timeStamp, datatype=XSD.integer)))
+    # Measurement
+    graph.add((ex.measurement, RDF.type, ex.Measurement))
+    graph.add((ex.measurement, ex.MeasuresLink, ex.a))
+    graph.add((ex.measurement, ex.hasTimeStamp, ex.t))
+    logging.info("Graph sent to SPARQL server with lenght %s", len(graph))
+
+
 def main():
-    links = get_links()
-    # while True:
-    for l in links:
-        # get stats 
-        l.set_link_rate(get_link_stats(l))
-        
-    # publish to Apache Jena Fuseki
-    publish_rdf()
-
-        # sleep(READ_INTERVAL)
+    """
+    Main program function. It loops every READ_INTERVAL seconds
+    getting statistics about links and send them to the SPARQL
+    database.
+    """
+    try:
+        links = []
+        while not len(links) > 0:
+            links = get_links()
+            sleep(READ_INTERVAL)
+        logging.debug("Detected %s links in the topology. Starting polling link stats.", len(links))
+        store = SPARQLUpdateStore()
+        store.open((FUSEKI_QUERY_URL, FUSEKI_UPDATE_URL))
+        graph = Graph(store, identifier=default)
+        while True:
+            currentTime =  round(time.time())
+            for l in links:
+                # get stats 
+                get_link_stats(l)
+                publish_rdf(currentTime, l, graph)
+            sleep(READ_INTERVAL)
+    except KeyboardInterrupt:
+        graph.close()
+        print("Script finished by CTRL+C command")
 
 if __name__ == '__main__':
     # Configure logging
