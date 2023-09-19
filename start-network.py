@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from mininet.net import Mininet
 from mininet.node import Controller, RemoteController, OVSController
@@ -8,7 +8,9 @@ from mininet.node import IVSSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.link import TCLink, Intf
+from mininet.util import customClass
 from subprocess import call
+from time import sleep
 
 def myNetwork():
 
@@ -16,7 +18,7 @@ def myNetwork():
 
     info( '*** Adding controller\n' )
     c0=net.addController(name='c0', controller=RemoteController, 
-                         ip='192.168.158.11',
+                         ip='localhost',
                          protocol='tcp',
                          port=6653)
 
@@ -24,21 +26,18 @@ def myNetwork():
     s1 = net.addSwitch('s1', cls=OVSKernelSwitch, protocols="OpenFlow13")
     s2 = net.addSwitch('s2', cls=OVSKernelSwitch, protocols="OpenFlow13")
     s3 = net.addSwitch('s3', cls=OVSKernelSwitch, protocols="OpenFlow13")
-    # s3 = net.addSwitch('s3', cls=OVSKernelSwitch, protocols="OpenFlow13")
 
     info( '*** Add hosts\n')
     h1 = net.addHost('h1', cls=Host, ip='10.0.0.1', defaultRoute=None)
-    h2 = net.addHost('h2', cls=Host, ip='10.0.0.2', defaultRoute=None)
     h3 = net.addHost('h3', cls=Host, ip='10.0.0.3', defaultRoute=None)
 
     info( '*** Add links\n')
     net.addLink(h1, s1)
-    net.addLink(h2, s2)
     net.addLink(h3, s3)
     
-    net.addLink(s1, s3, bw=500)
-    net.addLink(s3, s2, bw=1000)
-    net.addLink(s1, s2, bw=1000)
+    net.addLink(s1, s3, bw=50)
+    net.addLink(s1, s2, bw=100)
+    net.addLink(s2, s3, bw=100)
 
     info( '*** Starting network\n')
     net.build()
@@ -51,11 +50,10 @@ def myNetwork():
     net.get('s2').start([c0])
     net.get('s3').start([c0])
 
-    info( '*** Post configure switches and hosts\n')
-
     CLI(net)
     net.stop()
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
     myNetwork()
+
