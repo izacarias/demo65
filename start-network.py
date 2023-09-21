@@ -50,10 +50,12 @@ def myNetwork():
     net.get('s2').start([c0])
     net.get('s3').start([c0])
 
+    info( '*** Starting iperf server on h3\n')
+    h3.cmd( 'iperf -s -u &' )
+
     CLI(net)
     net.stop()
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
     myNetwork()
-
