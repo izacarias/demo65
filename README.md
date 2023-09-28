@@ -1,5 +1,32 @@
 # Demo65
 
+## Steps for demonstration
+
+1. Open SSH connection to the server:
+```
+ssh -A -L 3030:localhost:3030 -L 8181:localhost:8181 -L 8086:localhost:8086 -L 3000:localhost:3000 -J user@ngni-jumphost.fokus.fraunhofer.de user@6g-ric-ibn-1
+```
+2. Go to the Demo directory and start the simulated network
+```
+cd /home/demo
+sudo ./start-network.py
+```
+
+3. Open a second SSH connection to the server and run the sync script
+```
+ssh -A -J user@ngni-jumphost.fokus.fraunhofer.de user@6g-ric-ibn-1
+cd /home/demo/sync
+source .venv/bin/activate
+./main.py 
+```
+
+4. Run Iperf to generate traffic between hosts H1 and H3
+In the first SSH connection (Where you seen the prompt "mininet>")
+```
+h1 iperf -u -c 10.0.0.3 -i 2 -t 20 -b 40m
+```
+Adjust -t to the time and -b to bandwidth (-b 40m to 40 Mbps, -b 100m to 100 Mbps)
+
 ## Install the required software
 
 ### Apache Jena Fuseki Server
