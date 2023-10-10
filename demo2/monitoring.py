@@ -5,19 +5,33 @@ import re
 import logging
 import subprocess
 import time
+from configparser import ConfigParser
 from urllib.error import URLError
 from rdflib import Namespace, XSD, Graph, Literal
 from rdflib.namespace import RDF, RDFS, OWL
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from rdflib.graph import DATASET_DEFAULT_GRAPH_ID as default
+import influxdb_client, os, time
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client.client.write_api import SYNCHRONOUS
 
-STATS_PING_COUNT = 5
-STATS_IPERF_TIME = 5
-FUSEKI_URL = "http://localhost:3030"
-FUSEKI_DATASET = "ONOS"
+
+# Reading configurations
+config = ConfigParser()
+config.read("config.ini")
+# Monitoring configurations
+STATS_PING_COUNT = config.getint("agent", "ping_count")
+STATS_IPERF_TIME = config.getint("agent", "iperf_time")
+# Fuseki configurations
+FUSEKI_URL = str(config.get("fuseki", "url"))
+FUSEKI_DATASET = str(config.get("fuseki", "database"))
 FUSEKI_UPDATE_URL = f"{FUSEKI_URL}/{FUSEKI_DATASET}/update"
 FUSEKI_QUERY_URL = f"{FUSEKI_URL}/{FUSEKI_DATASET}/query"
-
+# Influx configurations
+INFLUX_TOKEN = str(config.get("influxdb", "token"))
+INFLUX_ORG = str(config.get("influxdb", "organization"))
+INFLUX_URL = str(config.get("influxdb", "url"))
+INFLUX_BUCKET = str(config.get("influxdb", "bucket"))
 
 def test_latency_jitter(target_ip):
     try:
@@ -42,7 +56,7 @@ def test_latency_jitter(target_ip):
 def test_bandwidth(iperf_server_ip, link_data_rate):
     avg_bw = 0.0
     packet_loss = 0.0
-    jitter = 0.0
+    # jitter = 0.0
     packet_loss = 0
     line_regexp = r"^\[.*\].*receiver$"
     stats_regexp = r"^\[\s*\d+\].*\s+([\d.]+)\sMbits/sec\s*([\d.]+).+\(([\d.]+)%\)\s*receiver"
@@ -54,13 +68,12 @@ def test_bandwidth(iperf_server_ip, link_data_rate):
             if re.match(line_regexp, line):
                 stats_match = re.match(stats_regexp, line)
                 if (stats_match):
-                    print("Weee2")
-                    avg_bw = stats_match.group(1)
-                    jitter = stats_match.group(2)
-                    packet_loss = stats_match.group(3)
+                    avg_bw = float(stats_match.group(1))
+                    # jitter = float(stats_match.group(2))
+                    packet_loss = float(stats_match.group(3))
         return avg_bw, packet_loss
     except subprocess.CalledProcessError:
-        logging.error("iperf test failed. Make sure the iperf server is running and reachable.")
+        logging.error("Iperf test failed. Make sure the iperf server is running and reachable.")
 
 def update_sparqldb(link_name, latency, jitter, datarate, loss, graph: Graph, ns: Namespace):
     """
@@ -75,13 +88,29 @@ def update_sparqldb(link_name, latency, jitter, datarate, loss, graph: Graph, ns
         # # add new values 
         # graph.add((link_to_update, RDF.type, ns.BWMeasurement))
         # graph.add((link_to_update, ns.hasBWMeasurement, usageObject))
-        logging.info(f"Link {link_name} updated in SPARQL. Latency={latency}, Jitter={jitter}, Datarate={datarate}, Packetloss={loss}")
+        logging.debug(f"Link {link_name} updated in SPARQL. Latency={latency}, Jitter={jitter}, Datarate={datarate}, Packetloss={loss}")
     except URLError:
         logging.error("Connection to SPARQL Server refused. Is SPARQL running?")
+
+def update_influx(link_name, latency, jitter, datarate, loss, write_api):
+    point = (
+        Point("linkstat")
+        .tag("linkName", link_name)
+        .field("latency", float(latency))
+        .field("jitter", float(jitter))
+        .field("bandwidth", float(datarate))
+        .field("loss", float(loss))
+    )
+    logging.debug("New InfluxDB record: Link=%s, latency=%s, jitter=%s, datarate=%s, loss=%s", 
+                 str(link_name), str(latency), str(jitter), str(datarate), str(loss))
+    write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 
 if __name__ == "__main__":
     # set the log level
     logging.basicConfig(level=logging.DEBUG)
+    # Open InfluxDB connection
+    influx_write_client = influxdb_client.InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    influx_write_api = influx_write_client.write_api(write_options=SYNCHRONOUS)
     # get dstination IP from command line, or assume 10.0.0.2
     if len( sys.argv ) > 3:
         dst_ip = sys.argv[ 1 ]
@@ -92,12 +121,14 @@ if __name__ == "__main__":
         store.open((FUSEKI_QUERY_URL, FUSEKI_UPDATE_URL))
         ns = Namespace("http://6g-ric.de#")
         graph = Graph(store, identifier=default)
-        while True:    
-            logging.info(f"Testing network link to {dst_ip}...")
-            latency, jitter = test_latency_jitter(dst_ip)
-            logging.info(f"Testing bandwidth to {dst_ip}")
-            datarate, loss = test_bandwidth(dst_ip, link_datarate)
-            update_sparqldb(link_name, latency, jitter, datarate, loss, graph, ns)
+        while True:
+            try:
+                latency, jitter = test_latency_jitter(dst_ip)
+                datarate, loss = test_bandwidth(dst_ip, link_datarate)
+                update_sparqldb(link_name, latency, jitter, datarate, loss, graph, ns)
+                update_influx(link_name, latency, jitter, datarate, loss, write_api = influx_write_api)
+            except:
+                logging.error("Problem reading measurements. Skipping this iteration.")
             time.sleep(1)
     else:
         logging.error("Incorrect use of script. Please provide destination IP address, link name and link data rate.")
