@@ -1,0 +1,226 @@
+[
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa1",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "2"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "6"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa2",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "6"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "2"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa3",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "3"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "7"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa4",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "7"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "3"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa5",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "4"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "8"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa6",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "8"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "4"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa7",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "5"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "9"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xa8",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000001",
+            "port": "9"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000001",
+            "port": "5"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb1",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "2"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "6"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb2",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "6"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "2"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb3",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "3"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "7"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb4",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "7"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "3"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb5",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "4"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "8"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb6",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "8"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "4"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb7",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "5"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "9"
+        }
+    },
+    {
+        "type": "PointToPointIntent",
+        "appId": "org.onosproject.ovsdb",
+        "key": "0xb8",
+        "priority": "100",
+        "ingressPoint": {
+            "device": "of:0000000000000002",
+            "port": "9"
+        },
+        "egressPoint": {
+            "device": "of:0000000000000002",
+            "port": "5"
+        }
+    }
+]
