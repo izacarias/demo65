@@ -7,11 +7,11 @@ import subprocess
 import time
 from configparser import ConfigParser
 from urllib.error import URLError
-from rdflib import Namespace, XSD, Graph, Literal
+from rdflib import Namespace, Graph, URIRef
 from rdflib.namespace import RDF, RDFS, OWL
 from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore
 from rdflib.graph import DATASET_DEFAULT_GRAPH_ID as default
-import influxdb_client, os, time
+import influxdb_client, time
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -32,6 +32,8 @@ INFLUX_TOKEN = str(config.get("influxdb", "token"))
 INFLUX_ORG = str(config.get("influxdb", "organization"))
 INFLUX_URL = str(config.get("influxdb", "url"))
 INFLUX_BUCKET = str(config.get("influxdb", "bucket"))
+# KB Namespace
+KB_NS_URL = "http://purl.org/toco/"
 
 def test_latency_jitter(target_ip):
     try:
@@ -75,22 +77,39 @@ def test_bandwidth(iperf_server_ip, link_data_rate):
     except subprocess.CalledProcessError:
         logging.error("Iperf test failed. Make sure the iperf server is running and reachable.")
 
-def update_sparqldb(link_name, latency, jitter, datarate, loss, graph: Graph, ns: Namespace):
+def update_sparqldb(link_name, latency, jitter, datarate, loss, graph: Graph):
     """
     Publishes the link statistics (data rate) to Apache Jena/Fuseki
     SPARQL database.
     """
-    # Do some cool checking here
+    # Subject
+    myLink = URIRef(KB_NS_URL + link_name)
+    # Predicates
+    hasRoundTripTime = URIRef(KB_NS_URL + "hasRoundTripTime")
+    hasJitter = URIRef(KB_NS_URL + "hasJitter")
+    hasDatarate = URIRef(KB_NS_URL + "hasDatarate")
+    hasPacketLoss = URIRef(KB_NS_URL + "hasPacketLoss")
+    # Object (Values)
+    oRoundTripTime = URIRef(KB_NS_URL + "Delay_" + str(int(latency)) + "_ms")
+    oJitter = URIRef(KB_NS_URL + "Jitter_" + str(int(jitter)) + "_ms")
+    oDatarate = URIRef(KB_NS_URL + "Datarate_" + str(int(datarate)) + "_Mbps")
+    oPacketLoss = URIRef(KB_NS_URL + "Packetloss_" + str(int(loss)) + "_percent")
+
     try:
-        # # remove old values
-        # graph.remove((link_to_update, ns.hasBWMeasurement, None))
-        # graph.remove((link_to_update, RDF.type, ns.BWMeasurement))
-        # # add new values 
-        # graph.add((link_to_update, RDF.type, ns.BWMeasurement))
-        # graph.add((link_to_update, ns.hasBWMeasurement, usageObject))
+        # Remove old values
+        graph.remove((myLink, hasRoundTripTime, None))
+        graph.remove((myLink, hasJitter, None))
+        graph.remove((myLink, hasDatarate, None))
+        graph.remove((myLink, hasPacketLoss, None))
+        # Add new values
+        graph.add((myLink, hasRoundTripTime, oRoundTripTime))
+        graph.add((myLink, hasJitter, oJitter))
+        graph.add((myLink, hasDatarate, oDatarate))
+        graph.add((myLink, hasPacketLoss, oPacketLoss))
         logging.debug(f"Link {link_name} updated in SPARQL. Latency={latency}, Jitter={jitter}, Datarate={datarate}, Packetloss={loss}")
     except URLError:
         logging.error("Connection to SPARQL Server refused. Is SPARQL running?")
+
 
 def update_influx(link_name, latency, jitter, datarate, loss, write_api):
     point = (
@@ -119,13 +138,12 @@ if __name__ == "__main__":
         # Prepare the ontology in SPARQL
         store = SPARQLUpdateStore()
         store.open((FUSEKI_QUERY_URL, FUSEKI_UPDATE_URL))
-        ns = Namespace("http://6g-ric.de#")
         graph = Graph(store, identifier=default)
         while True:
             try:
                 latency, jitter = test_latency_jitter(dst_ip)
                 datarate, loss = test_bandwidth(dst_ip, link_datarate)
-                update_sparqldb(link_name, latency, jitter, datarate, loss, graph, ns)
+                update_sparqldb(link_name, latency, jitter, datarate, loss, graph)
                 update_influx(link_name, latency, jitter, datarate, loss, write_api = influx_write_api)
             except:
                 logging.error("Problem reading measurements. Skipping this iteration.")
