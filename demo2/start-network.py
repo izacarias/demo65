@@ -184,10 +184,10 @@ def myNetwork():
     sleep(2)
 
     info ( '*** Starting monitoring agents in hosts h1 .. h4\n' )
-    m1.cmd( './monitoring.py 10.0.0.105 LinkA 25 > linkA.log 2>&1 &' )
-    m2.cmd( './monitoring.py 10.0.0.106 LinkB 5 > linkB.log  2>&1 &' )
-    m3.cmd( './monitoring.py 10.0.0.107 LinkC 3 > linkC.log  2>&1 &')
-    m4.cmd( './monitoring.py 10.0.0.108 LinkD 25 > linkD.log  2>&1 &')
+    m1.cmd( './monitoring.py 10.0.0.105 MyFiberLink 25 > MyFiberLink.log 2>&1 &' )
+    m2.cmd( './monitoring.py 10.0.0.106 MyWirelessLink 5 > MyWirelessLink.log  2>&1 &' )
+    m3.cmd( './monitoring.py 10.0.0.107 MyNTNLink1 3 > MyNTNLink1.log  2>&1 &')
+    m4.cmd( './monitoring.py 10.0.0.108 MyNTNLink2 25 > MyNTNLink2.log  2>&1 &')
 
     CLI(net)
     # info( '*** Starting iperf client on h1\n')
