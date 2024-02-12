@@ -131,9 +131,9 @@ def myNetwork():
     net.addLink(m8, s2, bw=1000)
 
     info( '*** Add transport links\n')
-    net.addLink( s1, s2, bw=25, delay='7ms',   loss=1, jitter='1ms' )     # Fiber
-    net.addLink( s1, s2, bw=5,  delay='17ms',  loss=2, jitter='2ms' )     # Mobile 5G
-    net.addLink( s1, s2, bw=3,  delay='290ms', loss=5, jitter='10ms' )   # Stellite
+    net.addLink( s1, s2, bw=25, delay='7ms',   loss=1, jitter='1ms' )   # Fiber
+    net.addLink( s1, s2, bw=5,  delay='17ms',  loss=2, jitter='2ms' )   # Mobile 5G
+    net.addLink( s1, s2, bw=3,  delay='290ms', loss=5, jitter='10ms' )  # Stellite
     net.addLink( s1, s2, bw=25, delay='120ms', loss=1, jitter='20ms' )  # Stellite
 
     info( '*** Adding interface to root namespace\n')
@@ -174,6 +174,8 @@ def myNetwork():
     sleep(2)
     info( '*** Installing monitoring flow rules from monflows.json\n')
     install_rules_from_file("monflows.json")
+    info( '*** Selecting Link 1 (bw=25Mbps, latency=7ms, loss=1%, jitter=1ms)\n')
+    install_rules_from_file("select-l1.json")
     info( '*** Running iperf3 servers on hosts m5 .. m8\n')
     m5.cmd( 'iperf3 -s -D' )
     m6.cmd( 'iperf3 -s -D' )
